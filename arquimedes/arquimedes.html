@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Principio de Arquímedes — Simulador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <style>
+    :root {
+      --clr-bg: #f8f9fa;
+      --clr-surface: #ffffff;
+      --clr-text: #1f2937;
+      --clr-text-muted: #6b7280;
+      --clr-accent: #2d7d9a;
+      --clr-accent-light: #d4eef4;
+      --clr-border: #e2e8f0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --clr-bg: #2e3440;
+        --clr-surface: #3b4252;
+        --clr-text: #eceff4;
+        --clr-text-muted: #d0d8e4;
+        --clr-accent: #5fb3d4;
+        --clr-accent-light: #2a4558;
+        --clr-border: #4c566a;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      gap: 20px;
+    }
+
+    header { text-align: center; }
+    header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: 0.03em; }
+    header p  { font-size: 0.85rem; color: var(--clr-text-muted); margin-top: 4px; }
+
+    /* ── Mode toggle ──────────────────────────────────────────────────────── */
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--clr-accent);
+      border: 1px solid var(--clr-accent);
+      border-radius: 8px;
+      overflow: hidden;
+      width: 100%;
+    }
+    .mode-btn {
+      padding: 9px 10px;
+      border: none;
+      border-radius: 0;
+      background: var(--clr-surface);
+      color: var(--clr-text);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1.25;
+    }
+    .mode-btn:hover:not(.active) { background: var(--clr-accent-light); }
+    .mode-btn.active { background: var(--clr-accent); color: #fff; }
+
+    /* ── Layout ───────────────────────────────────────────────────────────── */
+    .main-layout {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .graphs-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+    }
+    #cc-scene { aspect-ratio: 16 / 9; }
+    #cc-graph { aspect-ratio: 16 / 7; }
+    .canvas-container canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
+
+    /* ── Controls panel ───────────────────────────────────────────────────── */
+    .controls {
+      width: 100%;
+      max-width: 720px;
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .control-label {
+      font-size: 0.85rem;
+      color: var(--clr-text-muted);
+      width: 170px;
+      flex-shrink: 0;
+    }
+    input[type=number] {
+      flex: 1;
+      min-width: 0;
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      border: 1px solid var(--clr-border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+    }
+    input[type=number]:focus { outline: none; border-color: var(--clr-accent); }
+
+    select {
+      flex: 1;
+      min-width: 0;
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      border: 1px solid var(--clr-border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    select:focus { outline: none; border-color: var(--clr-accent); }
+
+    input[type=range] {
+      flex: 1;
+      accent-color: var(--clr-accent);
+    }
+
+    .button-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    button {
+      padding: 8px 20px;
+      border: 1px solid var(--clr-accent);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--clr-text);
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    button:hover   { background: var(--clr-accent-light); }
+    button.primary { background: var(--clr-accent); color: #fff; }
+    button.primary:hover { filter: brightness(1.08); }
+
+    /* ── Stats grid ───────────────────────────────────────────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+      padding: 12px 14px;
+      background: var(--clr-bg);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .stat-key   { color: var(--clr-text-muted); }
+    .stat-value { color: var(--clr-text); font-variant-numeric: tabular-nums; text-align: right; }
+
+    /* ── Legend ───────────────────────────────────────────────────────────── */
+    .legend-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; padding: 6px 8px;
+      background: var(--clr-bg); border: 1px solid var(--clr-border); border-radius: 6px;
+    }
+    .legend-swatch { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .legend-params  { flex: 1; color: var(--clr-text); font-variant-numeric: tabular-nums; }
+    .legend-results { color: var(--clr-text-muted); font-variant-numeric: tabular-nums; }
+    .legend-remove {
+      padding: 0 8px; border: none; background: transparent;
+      color: var(--clr-text-muted); font-size: 1.1rem; line-height: 1; cursor: pointer;
+    }
+    .legend-remove:hover { color: var(--clr-text); background: transparent; }
+
+    .hint { font-size: 0.75rem; color: var(--clr-text-muted); text-align: center; }
+
+    /* ── Equations section ────────────────────────────────────────────────── */
+    .equations {
+      width: 100%;
+      max-width: 720px;
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 12px;
+      padding: 18px 22px;
+    }
+    .equations h2 { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; }
+    .eq-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 640px)  { .eq-grid { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 1100px) {
+      .equations { max-width: 1080px; }
+      .eq-grid   { grid-template-columns: repeat(4, 1fr); }
+    }
+    .eq-title {
+      font-size: 0.72rem; color: var(--clr-text-muted); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .eq      { font-size: 1rem; line-height: 2.2; color: var(--clr-text); }
+    .eq-note { font-size: 0.72rem; color: var(--clr-text-muted); margin-top: 4px; }
+
+    /* ── Desktop layout ───────────────────────────────────────────────────── */
+    @media (min-width: 1100px) {
+      body { padding: 24px 40px; }
+      .main-layout {
+        flex-direction: row; align-items: flex-start; max-width: 1080px; gap: 28px;
+      }
+      .graphs-col { flex: 1 1 0; max-width: none; min-width: 420px; }
+      .controls   { flex: 0 0 340px; max-width: 340px; padding: 18px; }
+      .control-label { width: 130px; }
+      .legend-results { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Principio de Arquímedes</h1>
+  <p>Flotación de un cuerpo y medida del empuje con un dinamómetro.</p>
+</header>
+
+<div class="main-layout">
+
+  <!-- ── Graphs ── -->
+  <div class="graphs-col">
+    <div class="canvas-container" id="cc-scene">
+      <canvas id="canvas-scene"></canvas>
+    </div>
+    <div class="canvas-container" id="cc-graph">
+      <canvas id="canvas-graph"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Controls ── -->
+  <div class="controls">
+
+    <div class="mode-toggle">
+      <button id="btn-mode-float" class="mode-btn active">Flotación</button>
+      <button id="btn-mode-scale" class="mode-btn">Dinamómetro</button>
+    </div>
+
+    <!-- ════ FLOAT CONTROLS ════ -->
+    <div id="ctrl-float">
+
+      <div class="control-row">
+        <span class="control-label">Material del objeto</span>
+        <select id="sel-float-material"></select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Densidad objeto ρ_obj</span>
+        <input type="number" id="inp-float-rho" value="600" step="10" min="1">
+        <span class="stat-key">kg/m³</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Volumen V</span>
+        <input type="number" id="inp-float-V" value="1" step="0.1" min="0.01">
+        <span class="stat-key">L</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Fluido</span>
+        <select id="sel-float-fluid"></select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Densidad fluido ρ_fluido</span>
+        <input type="number" id="inp-float-rhof" value="1000" step="10" min="1">
+        <span class="stat-key">kg/m³</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Gravedad g</span>
+        <input type="number" id="inp-float-g" value="9.81" step="0.01" min="0.01">
+        <span class="stat-key">m/s²</span>
+      </div>
+
+      <div class="stats">
+        <span class="stat-key">Peso P</span>
+        <span class="stat-value" id="stat-float-p">—</span>
+        <span class="stat-key">Empuje en equilibrio E</span>
+        <span class="stat-value" id="stat-float-e">—</span>
+        <span class="stat-key">Fracción sumergida f</span>
+        <span class="stat-value" id="stat-float-f">—</span>
+        <span class="stat-key">Estado</span>
+        <span class="stat-value" id="stat-float-state">—</span>
+      </div>
+
+      <div class="button-row">
+        <button id="btn-float-launch" class="primary">Soltar objeto</button>
+        <button id="btn-float-pause">Pausar</button>
+        <button id="btn-float-clear">Borrar todo</button>
+      </div>
+
+      <div class="legend">
+        <ul id="legend-list" class="legend-list"></ul>
+      </div>
+
+    </div><!-- #ctrl-float -->
+
+    <!-- ════ SCALE (DYNAMOMETER) CONTROLS ════ -->
+    <div id="ctrl-scale" hidden>
+
+      <div class="control-row">
+        <span class="control-label">Material del objeto</span>
+        <select id="sel-scale-material"></select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Densidad objeto ρ_obj</span>
+        <input type="number" id="inp-scale-rho" value="2700" step="10" min="1">
+        <span class="stat-key">kg/m³</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Volumen V</span>
+        <input type="number" id="inp-scale-V" value="1" step="0.1" min="0.01">
+        <span class="stat-key">L</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Fluido</span>
+        <select id="sel-scale-fluid"></select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Densidad fluido ρ_fluido</span>
+        <input type="number" id="inp-scale-rhof" value="1000" step="10" min="1">
+        <span class="stat-key">kg/m³</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Gravedad g</span>
+        <input type="number" id="inp-scale-g" value="9.81" step="0.01" min="0.01">
+        <span class="stat-key">m/s²</span>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Profundidad sumergida</span>
+        <input type="range" id="inp-scale-f" min="0" max="100" step="1" value="0">
+        <span class="stat-key" id="lbl-scale-f">0 %</span>
+      </div>
+
+      <div class="stats">
+        <span class="stat-key">Peso en aire P</span>
+        <span class="stat-value" id="stat-scale-p">—</span>
+        <span class="stat-key">Empuje actual E</span>
+        <span class="stat-value" id="stat-scale-e">—</span>
+        <span class="stat-key">Lectura dinamómetro</span>
+        <span class="stat-value" id="stat-scale-reading">—</span>
+        <span class="stat-key">Empuje máximo (sumergido)</span>
+        <span class="stat-value" id="stat-scale-emax">—</span>
+      </div>
+
+      <div class="button-row">
+        <button id="btn-scale-reset">Reiniciar profundidad</button>
+      </div>
+
+    </div><!-- #ctrl-scale -->
+
+    <p class="hint">Línea discontinua = equilibrio previsto para los parámetros actuales · Enter = soltar objeto (modo Flotación)</p>
+
+  </div><!-- .controls -->
+
+</div><!-- .main-layout -->
+
+<!-- ════ EQUATIONS — FLOTACIÓN ════ -->
+<section class="equations" id="eq-float">
+  <h2>Ecuaciones — Flotación (Principio de Arquímedes)</h2>
+  <div class="eq-grid">
+
+    <div>
+      <div class="eq-title">Empuje</div>
+      <div class="eq" data-tex="E = \rho_{fluido}\, V_{sumergido}\, g"></div>
+    </div>
+
+    <div>
+      <div class="eq-title">Peso</div>
+      <div class="eq" data-tex="P = mg = \rho_{obj}\, V\, g"></div>
+    </div>
+
+    <div>
+      <div class="eq-title">Equilibrio (flotando)</div>
+      <div class="eq" data-tex="E = P \;\Rightarrow\; f = \dfrac{V_{sumergido}}{V} = \dfrac{\rho_{obj}}{\rho_{fluido}}"></div>
+      <div class="eq-note">Válido si f ≤ 1, es decir ρ_obj ≤ ρ_fluido.</div>
+    </div>
+
+    <div>
+      <div class="eq-title">Casos</div>
+      <div class="eq-note">ρ_obj &lt; ρ_fluido → flota parcialmente sumergido.</div>
+      <div class="eq-note">ρ_obj = ρ_fluido → flota totalmente sumergido (equilibrio indiferente).</div>
+      <div class="eq-note">ρ_obj &gt; ρ_fluido → se hunde hasta el fondo.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════ EQUATIONS — DINAMÓMETRO ════ -->
+<section class="equations" id="eq-scale" hidden>
+  <h2>Ecuaciones — Peso aparente y dinamómetro</h2>
+  <div class="eq-grid">
+
+    <div>
+      <div class="eq-title">Peso real (en el aire)</div>
+      <div class="eq" data-tex="P = \rho_{obj}\, V\, g"></div>
+    </div>
+
+    <div>
+      <div class="eq-title">Empuje según profundidad</div>
+      <div class="eq" data-tex="E(f) = \rho_{fluido}\, V\, f\, g"></div>
+      <div class="eq-note">f = fracción de altura sumergida, 0 ≤ f ≤ 1.</div>
+    </div>
+
+    <div>
+      <div class="eq-title">Lectura del dinamómetro</div>
+      <div class="eq" data-tex="P_{aparente}(f) = P - E(f)"></div>
+    </div>
+
+    <div>
+      <div class="eq-title">Determinación experimental de ρ_fluido</div>
+      <div class="eq" data-tex="\rho_{fluido} = \dfrac{P - P_{aparente}}{V g} = \dfrac{E_{max}}{V g}"></div>
+      <div class="eq-note">Pesando en el aire y totalmente sumergido (f = 1).</div>
+    </div>
+
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>
+  document.querySelectorAll('.eq[data-tex]').forEach(el => {
+    katex.render(el.dataset.tex, el, { throwOnError: false, displayMode: false });
+  });
+</script>
+
+<script src="physics.js"></script>
+<script src="scene.js"></script>
+<script src="main.js"></script>
+<script src="controls.js"></script>
+</body>
+</html>
